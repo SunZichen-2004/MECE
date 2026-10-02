@@ -1,0 +1,26 @@
+{
+  "kind": "minimal_smoke_test_not_full_benchmark",
+  "seed": 7,
+  "device": "cpu",
+  "train_size": 2,
+  "valid_size": 1,
+  "test_size": 1,
+  "epochs": 1,
+  "parameters": 781,
+  "training_seconds": 0.07281966600567102,
+  "training_seconds_per_epoch": 0.07281966600567102,
+  "peak_process_rss_mb": 339.203125,
+  "validation": {
+    "energy_mae_ev": 42.72954559326172,
+    "energy_mae_mev_per_atom": 1582.575762713397,
+    "force_mae_mev_per_angstrom": 707.1520090103149,
+    "seconds_per_configuration": 0.00498870899900794
+  },
+  "test_300K": {
+    "energy_mae_ev": 39.19861602783203,
+    "energy_mae_mev_per_atom": 1451.8005936234085,
+    "force_mae_mev_per_angstrom": 612.3742461204529,
+    "seconds_per_configuration": 0.004806292010471225
+  },
+  "command": "scripts/train_3bpa.py --train-size 2 --valid-size 1 --epochs 1 --channels 4 --output runs/3bpa_smoke/probe.json"
+}
