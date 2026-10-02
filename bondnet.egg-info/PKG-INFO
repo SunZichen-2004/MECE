@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: bondnet
+Version: 0.1.0
+Summary: Primitive edge-centered equivariant interatomic model prototype
+Requires-Python: >=3.10
+Requires-Dist: torch>=2.1
+Provides-Extra: test
+Requires-Dist: pytest>=7; extra == "test"
+Provides-Extra: experiment
+Requires-Dist: pyarrow>=15; extra == "experiment"
+Requires-Dist: psutil>=5; extra == "experiment"
