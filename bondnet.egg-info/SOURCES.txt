@@ -22,4 +22,5 @@ bondnet/modules/scatter.py
 bondnet/modules/spherical_harmonics.py
 tests/test_equivariance.py
 tests/test_geometry.py
+tests/test_so2_algebra.py
 tests/test_training.py

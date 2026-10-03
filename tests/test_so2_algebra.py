@@ -24,6 +24,35 @@ def test_real_wigner_transport_matches_direct_harmonic_evaluation() -> None:
         torch.testing.assert_close(transported, target_harmonics[angular_momentum], rtol=1.0e-12, atol=1.0e-12)
 
 
+def test_vectorized_so2_product_matches_pairwise_blocks() -> None:
+    torch.manual_seed(31)
+    from bondnet.modules.edge_cluster_expansion import so2_contract
+
+    number_of_items = 5
+    number_of_channels = 3
+    maximum_angular_momentum = 2
+    orders = []
+    for absolute_order in range(maximum_angular_momentum + 1):
+        components = 1 if absolute_order == 0 else 2
+        orders.append(torch.randn(number_of_items, components, number_of_channels, dtype=torch.float64))
+    left = torch.zeros(maximum_angular_momentum + 1, number_of_items, 2, number_of_channels, dtype=torch.float64)
+    right = torch.zeros_like(left)
+    for absolute_order, values in enumerate(orders):
+        left[absolute_order, :, : values.shape[1]] = values
+        right[absolute_order, :, : values.shape[1]] = torch.randn_like(values)
+    expected = torch.zeros_like(left)
+    for left_order in range(maximum_angular_momentum + 1):
+        for right_order in range(maximum_angular_momentum + 1):
+            left_values = left[left_order, :, : 1 if left_order == 0 else 2]
+            right_values = right[right_order, :, : 1 if right_order == 0 else 2]
+            for output_order, product in multiply_so2_blocks(left_values, left_order, right_values, right_order):
+                if output_order <= maximum_angular_momentum:
+                    width = product.shape[1]
+                    expected[output_order, :, :width] += product
+    actual = so2_contract(left, right)
+    torch.testing.assert_close(actual, expected, rtol=1.0e-12, atol=1.0e-12)
+
+
 def test_so2_product_has_sum_and_difference_orders() -> None:
     angle = torch.tensor(0.37, dtype=torch.float64)
     left = torch.stack((torch.cos(2 * angle), torch.sin(2 * angle))).view(1, 2, 1)
@@ -35,7 +64,7 @@ def test_so2_product_has_sum_and_difference_orders() -> None:
     torch.testing.assert_close(products[1], expected_order_one)
 
 
-def test_edge_reversal_gives_one_shared_bond_energy() -> None:
+def test_total_energy_is_sum_of_bond_layer_energies() -> None:
     torch.manual_seed(29)
     model = BondNet(number_of_channels=4, maximum_angular_momentum=1, number_of_interactions=1)
     data = AtomicData(
@@ -44,11 +73,11 @@ def test_edge_reversal_gives_one_shared_bond_energy() -> None:
         cutoff_radius=model.cutoff_radius,
     )
     result = model(data)
-    sender = data.edge.sender_atom_indices
-    receiver = data.edge.receiver_atom_indices
-    for edge_index in range(sender.numel()):
-        reverse_index = torch.where(
-            (sender == receiver[edge_index]) & (receiver == sender[edge_index])
-        )[0].item()
-        torch.testing.assert_close(result["edge_energy"][edge_index], result["edge_energy"][reverse_index])
-    torch.testing.assert_close(result["energy"].sum(), result["edge_energy"].sum())
+    assert result["bond_energy"].shape == data.edge.sender_atom_indices.shape
+    torch.testing.assert_close(result["energy"].sum(), result["bond_energy"].sum())
+    model.atomic_energy_table[1] = 0.4
+    model.atomic_energy_table[6] = -1.5
+    model.atomic_energy_table[8] = 2.0
+    result = model(data)
+    atomic_reference = model.atomic_energy_table[data.atomic_numbers].sum()
+    torch.testing.assert_close(result["energy"].sum(), result["bond_energy"].sum() + atomic_reference)
